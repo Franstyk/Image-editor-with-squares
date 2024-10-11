@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edytor zdjęć</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    #canvas {
+      border: 1px solid black;
+      position: relative;
+    }
+
+    .grid {
+      position: absolute;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .grid-cell {
+      border: 1px solid black;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      pointer-events: auto;
+    }
+
+    .grid-cell.marked {
+      background-color: rgba(128, 0, 128, 0.4);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    #filePicker {
+      display: block;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aplikacja do edycji zdjęć</h1>
+  <input type="file" id="filePicker" accept="image/png, image/jpeg, .iifo">
+  <button id="save">Zapisz jako .iifo</button>
+
+  <canvas id="canvas" width="600" height="400"></canvas>
+  <div id="grid-container"></div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const gridContainer = document.getElementById('grid-container');
+    let image = null;
+    let gridSize = 50; // Rozmiar kwadratów
+
+    // Funkcja do rysowania siatki
+    function drawGrid(rows, cols) {
+      gridContainer.style.width = canvas.width + 'px';
+      gridContainer.style.height = canvas.height + 'px';
+      gridContainer.classList.add('grid');
+      gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+      gridContainer.innerHTML = ''; // Reset siatki
+
+      for (let i = 0; i < rows * cols; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('grid-cell');
+        cell.addEventListener('click', () => openFileDialog(i));
+        gridContainer.appendChild(cell);
+      }
+    }
+
+    // Funkcja do wczytywania zdjęcia
+    document.getElementById('filePicker').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          image = img;
+          drawGrid(Math.ceil(img.height / gridSize), Math.ceil(img.width / gridSize));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Funkcja otwierania eksploratora plików i ładowania zdjęcia do kwadratu
+    function openFileDialog(index) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/png, image/jpeg';
+      input.classList.add('file-input');
+
+      input.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+              // Rysowanie obrazu w odpowiednim kwadracie
+              const cols = Math.ceil(canvas.width / gridSize);
+              const x = (index % cols) * gridSize;
+              const y = Math.floor(index / cols) * gridSize;
+              ctx.drawImage(img, x, y, gridSize, gridSize);
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      input.click();
+    }
+
+    // Funkcja do zapisywania pliku jako .iifo
+    document.getElementById('save').addEventListener('click', function() {
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'edited_image.iifo';
+      link.href = dataUrl;
+      link.click();
+    });
+  </script>
+</body>
+</html>
